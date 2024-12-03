@@ -103,6 +103,7 @@ def compute_centroids(X, labels, n_clusters):
         if len(cluster_points) > 0:
             centroids.append(cluster_points.mean(axis=0))
         else:
-            centroids.append(np.nan * np.ones(X.shape[1]))  # Handle empty clusters
-    return np.array(centroids)
+            n_clusters-=1
+    return np.array(centroids), n_clusters
+
  

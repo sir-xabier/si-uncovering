@@ -214,3 +214,58 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
 plt.tight_layout()
 
 plt.savefig("./figures/overview.png")
+
+
+import os
+import numpy as np
+
+
+# Correct way to get the current working directory and concatenate it with the file path
+file_path = os.path.join(os.getcwd(), "datasets/real/iris.npy")
+
+# Load the numpy file
+data = np.load(file_path, allow_pickle=True)
+
+data[:, -1].shape
+
+
+
+import argparse
+import os
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import adjusted_rand_score, accuracy_score
+from sklearn.cluster import KMeans, SpectralClustering
+from sklearn.mixture import GaussianMixture
+import hdbscan
+from fcmeans import FCM
+import json
+from utils import sugeno_inspired_global_uncovering_index, compute_centroids 
+from scipy.optimize import linear_sum_assignment
+from sklearn.metrics import adjusted_rand_score, accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
+
+
+def relabel_predictions(labels, predictions):
+    # Generate the confusion matrix
+    cm = confusion_matrix(labels, predictions)
+
+    # Use the Hungarian algorithm to find the optimal mapping (maximize diagonal)
+    row_ind, col_ind = linear_sum_assignment(-cm)  # Maximizing the diagonal
+    
+    # Create a dictionary to map old labels to new labels
+    label_mapping = {col: row for row, col in zip(row_ind, col_ind)}
+    
+    # Relabel predictions based on the optimal assignment
+    relabeled_predictions = np.array([label_mapping[pred] for pred in predictions])
+    
+    return relabeled_predictions
+
+    
+y = [0,0,1,1,2,2]
+pred = [1,1,1,2,0,0]
+
+r_pred = relabel_predictions(y, pred)
+pred, r_pred
+
+accuracy_score(y, pred)
+accuracy_score(y,r_pred) 
