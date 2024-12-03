@@ -1,0 +1,11 @@
+# Ignore contents of datasets, figures, and results
+datasets/*
+figures/*
+results/*
+tables/*
+
+# Allow the folders themselves to be tracked
+!datasets/
+!figures/
+!results/
+!tables/
