@@ -38,6 +38,7 @@ def compute_metrics(labels, predictions, average='macro'):
     return acc, f1, precision, recall
 
 def get_clustering_algorithm(name, **kwargs):
+    print( kwargs["n_clusters"])
     n_clusters = kwargs["n_clusters"]
     seed = kwargs["random_state"]
     
@@ -57,19 +58,18 @@ def get_clustering_algorithm(name, **kwargs):
         raise ValueError(f"Unknown algorithm: {name}")
 
 def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwargs):
-    n_clusters = len(np.unique(labels))
-    kwargs["n_clusters"] = n_clusters
-
+    if kwargs["n_clusters"] == -1:
+        kwargs["n_clusters"] = len(np.unique(labels))
+    print(kwargs["n_clusters"])
     model = get_clustering_algorithm(algorithm, **kwargs)
     if algorithm != "fcm":  
         predictions = model.fit_predict(data)
     else:
         model.fit(data)
         predictions = model.predict(data)
-     
+    
     # Compute cluster centroids for Sugeno-inspired index
-    centroids, n_clusters = compute_centroids(data, predictions, n_clusters)
-    sigui = sugeno_inspired_global_uncovering_index(data, centroids, predictions)
+    centroids, _ = compute_centroids(data, predictions, kwargs["n_clusters"])
 
     for i, label in enumerate(predictions):
         if label == -1:  # Noise point
@@ -77,19 +77,26 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
             distances = pairwise_distances(data[i].reshape(1, -1), centroids).flatten()
             # Assign to the nearest cluster
             predictions[i] = np.argmin(distances)
+
+    sigui = sugeno_inspired_global_uncovering_index(data, centroids, predictions)    
     
     # Use LabelEncoder to map valid cluster labels to sequential integers
     label_encoder = LabelEncoder()
-
     predictions = label_encoder.fit_transform(predictions)
     labels = label_encoder.fit_transform(labels)
-
     predictions = relabel_predictions(labels, predictions)
     
     # Compute metrics
     rand_score = adjusted_rand_score(labels, predictions)
     acc, f1, precision, recall = compute_metrics(labels, predictions)
  
+    # Prepare partitions for visualization
+    partitions = {
+        "X": data.tolist(),
+        "y": labels.tolist(),
+        "predictions": predictions.tolist(),
+    }
+    
     # Save results
     result = {
         "dataset": dataset_name,
@@ -100,10 +107,11 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "precision": precision,
         "recall": recall,
         "sigui": sigui,
+        "partitions": partitions  # Include the partitions
     }
 
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}.txt")
+    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{kwargs["n_clusters"]}.txt")
     with open(output_path, "w") as f:
         f.write(json.dumps(result, indent=4))
         
@@ -113,26 +121,21 @@ def main():
     parser.add_argument("-algorithm", type=str, required=True, help="Clustering algorithm to use")
     parser.add_argument("-dataset", type=str, required=True, help="Dataset name")
     parser.add_argument("-data_path", type=str, required=True, help="Path to dataset file (npy format)")
-    parser.add_argument("-output_dir", type=str, default="results", help="Directory to save results")
+    parser.add_argument("-output_dir", type=str, default="results", help="Directory to save results")   
+    parser.add_argument("-n_clusters", type=int, default=-1, help="Number of clusters")
     
-    parser.add_argument("--n_clusters", type=int, default=1, help="Number of clusters")
-    parser.add_argument("--random_state", type=int, default=42, help="Random seed")
+    parser.add_argument("--random_state", type=int, default=131416, help="Random seed")
 
-    # For KMeans
     parser.add_argument("--kmeans_max_iter", type=int, default=300, help="Maximum number of iterations for KMeans")
 
-    # For GMM
     parser.add_argument("--gmm_covariance_type", type=str, default="full", choices=["full", "tied", "diag", "spherical"], help="Covariance type for GMM")
 
-    # For HDBSCAN
     parser.add_argument("--hdbscan_min_cluster_size", type=int, default=5, help="Minimum cluster size for HDBSCAN")
 
-    # For FCM
     parser.add_argument("--fcm_m", type=float, default=150, help="Fuzziness parameter for FCM")
 
     args = parser.parse_args()
 
-    # Prepare data
     data = np.load(args.data_path)
     X, y = data[:, :-1], data[:, -1]
     scaler = StandardScaler()
@@ -140,6 +143,7 @@ def main():
     y = y.astype(np.int64)
  
     kwargs = {key: value for key, value in vars(args).items() if key not in ["algorithm", "dataset", "data_path", "output_dir"]}
+    
     process_experiment(args.algorithm, args.dataset, X, y, args.output_dir, **kwargs)
 
 if __name__ == "__main__":
