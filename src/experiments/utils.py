@@ -16,6 +16,7 @@ def uncovering(x, c):
     return 1 - np.exp(2 * np.log(10) * (-distance / (5 * np.sqrt(D))))
      
 def F(X, e_value):
+    
     max_X = np.max(X)
     min_X = np.min(X)
     

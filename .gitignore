@@ -2,7 +2,8 @@
 .venv/
 .vscode/
 
-# Ignore contents of datasets, figures, and results
-datasets/*
-figures/*
-results/*
+datasets/
+genetic/
+results/
+out_files/
+figures/

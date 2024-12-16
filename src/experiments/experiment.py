@@ -38,7 +38,6 @@ def compute_metrics(labels, predictions, average='macro'):
     return acc, f1, precision, recall
 
 def get_clustering_algorithm(name, **kwargs):
-    print( kwargs["n_clusters"])
     n_clusters = kwargs["n_clusters"]
     seed = kwargs["random_state"]
     
@@ -60,7 +59,7 @@ def get_clustering_algorithm(name, **kwargs):
 def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwargs):
     if kwargs["n_clusters"] == -1:
         kwargs["n_clusters"] = len(np.unique(labels))
-    print(kwargs["n_clusters"])
+    
     model = get_clustering_algorithm(algorithm, **kwargs)
     if algorithm != "fcm":  
         predictions = model.fit_predict(data)
@@ -68,8 +67,10 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         model.fit(data)
         predictions = model.predict(data)
     
+    n_clusters = kwargs["n_clusters"]
+    
     # Compute cluster centroids for Sugeno-inspired index
-    centroids, _ = compute_centroids(data, predictions, kwargs["n_clusters"])
+    centroids, _ = compute_centroids(data, predictions, n_clusters)
 
     for i, label in enumerate(predictions):
         if label == -1:  # Noise point
@@ -95,6 +96,7 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "X": data.tolist(),
         "y": labels.tolist(),
         "predictions": predictions.tolist(),
+        "k": n_clusters
     }
     
     # Save results
@@ -108,10 +110,10 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "recall": recall,
         "sigui": sigui,
         "partitions": partitions  # Include the partitions
-    }
-
+    } 
+    
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{kwargs["n_clusters"]}.txt")
+    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{n_clusters}.txt")
     with open(output_path, "w") as f:
         f.write(json.dumps(result, indent=4))
         

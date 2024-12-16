@@ -137,7 +137,7 @@ plt.figure(figsize=(10, 8))
 sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f", cbar=True, vmin=-1, vmax=1)
 plt.title("General Correlation Matrix")
 plt.tight_layout()
-plt.savefig("./figures/corr_matrix")
+plt.savefig("./figures/corr_matrix.png")
 
 # Compute correlation per dataset
 correlation_per_dataset = compute_correlation_per_dataset(results_df)

@@ -4,7 +4,7 @@ source .venv/bin/activate
 echo "Using Python from: $(which python3)"
 
 # Directory containing the datasets
-DATASET_DIR="datasets/synthetic"
+DATASET_DIR="datasets/blobs"
 OUTPUT_DIR="results"
 
 # List of algorithms to run
@@ -25,11 +25,12 @@ for dataset in $DATASET_DIR/*.npy; do
                 -data_path "$dataset" \
                 -output_dir "$OUTPUT_DIR" \
                 -n_clusters "$k" \
-                --random_state 31416 \
-                --kmeans_max_iter 300 \
-                --gmm_covariance_type "full" \
-                --hdbscan_min_cluster_size 5 \
-                --fcm_m 2.0
         done
     done
 done
+
+#                 --random_state 31416 \
+#                --kmeans_max_iter 300 \
+#                --gmm_covariance_type "full" \
+#                --hdbscan_min_cluster_size 5 \
+#                --fcm_m 2.0
