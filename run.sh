@@ -19,18 +19,14 @@ for dataset in $DATASET_DIR/*.npy; do
         # Run experiments for each algorithm in parallel
         for algorithm in "${ALGORITHMS[@]}"; do
             # Run the Python script for each combination of dataset, algorithm, and k in parallel
-            tsp ./.venv/bin/python3 src/experiment.py \
+            tsp ./.venv/bin/python3 src/experiments/experiment.py \
                 -algorithm "$algorithm" \
                 -dataset "$dataset_name" \
                 -data_path "$dataset" \
                 -output_dir "$OUTPUT_DIR" \
                 -n_clusters "$k" \
+                --random_state 31416 
         done
     done
 done
 
-#                 --random_state 31416 \
-#                --kmeans_max_iter 300 \
-#                --gmm_covariance_type "full" \
-#                --hdbscan_min_cluster_size 5 \
-#                --fcm_m 2.0
