@@ -24,17 +24,18 @@ def read_results(directory):
                 partitions = data.get("partitions", {})
                 X = partitions.get("X", [])
                 y = partitions.get("y", [])
+                k = partitions.get("k", [])
                 
                 # Compute k (number of unique clusters), n (number of samples), d (dimensionality)
                 n = len(X)
                 d = len(X[0]) if X else 0
-                k = len(set(y)) if y else 0
-                
+                k_true = len(set(y)) if y else 0
+               
                 # Add these values to the result
                 data["n_samples"] = n
                 data["dimensionality"] = d
-                data["n_clusters"] = k
-                
+                data["n_clusters"] = k_true
+                data["k"] = k
                 all_results.append(data)
     # Create a DataFrame from the collected results
     df = pd.DataFrame(all_results)
@@ -64,7 +65,7 @@ def compute_correlation(df):
 def compute_correlation_per_dataset(df):
     # Initialize a dictionary to store correlation per dataset
     correlation_per_dataset = {}
-    df = df.drop(columns = ["n_clusters", "algorithm", "n_samples", "dimensionality"])
+    df = df.drop(columns = ["n_clusters", "algorithm", "n_samples", "dimensionality", "k"])
     # Compute correlation for each dataset individually
     for dataset in df['dataset'].unique():
         dataset_df = df[df['dataset'] == dataset]
@@ -73,6 +74,24 @@ def compute_correlation_per_dataset(df):
         # Skip datasets with no variability in quality scores
         if numeric_df.nunique().min() <= 1:  # Check if all columns have at least 2 unique values
             continue
+        
+        # Compute Spearman rank correlation
+        spearman_corr = numeric_df.corr(method='spearman')
+        sigui_correlation = spearman_corr['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
+        
+        correlation_per_dataset[dataset] = sigui_correlation
+
+    # Convert dictionary to a DataFrame
+    return pd.DataFrame.from_dict(correlation_per_dataset)
+
+def compute_correlation_per_k(df):
+    # Initialize a dictionary to store correlation per dataset
+    correlation_per_dataset = {}
+    df = df.drop(columns = ["n_clusters", "algorithm", "n_samples", "dimensionality", "dataset"])
+    # Compute correlation for each dataset individually
+    for dataset in df['k'].unique():
+        dataset_df = df[df['k'] == dataset]
+        numeric_df = dataset_df.select_dtypes(include=[float, int])
         
         # Compute Spearman rank correlation
         spearman_corr = numeric_df.corr(method='spearman')
@@ -153,4 +172,16 @@ plt.tight_layout()
 # Save the figure
 plt.savefig("./figures/corr_all_datasets.png")
 
-visualize_partitions(results_df, "bcancer")
+# Compute correlation per dataset
+correlation_per_k = compute_correlation_per_k(results_df)
+correlation_per_k  = correlation_per_k.dropna()
+correlation_per_k = correlation_per_k .T.sort_values(by=["rand_score"])
+
+# Plot all dataset correlations in a single heatmap
+plt.figure(figsize=(10, 8)) 
+sns.heatmap(correlation_per_k, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
+plt.title("Correlation of 'sigui' with Other Metrics for All k")
+plt.tight_layout()
+
+# Save the figure
+plt.savefig("./figures/corr_all_k.png")
