@@ -2,17 +2,24 @@ import os
 import json
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def read_results(directory):
+def read_results(directory, output_csv=None):
+    # If CSV file exists, load and return it
+    if output_csv and os.path.exists(output_csv):
+        print(f"Loading existing results from {output_csv}...")
+        df = pd.read_csv(output_csv)
+        return df
+
     # Initialize a list to store all results
     all_results = []
 
-    # Iterate over all .txt files in the specified directory
-    for filename in os.listdir(directory):
+    # Iterate over all .txt files in the specified directory with tqdm progress bar
+    for filename in tqdm(os.listdir(directory), desc="Reading files"):
         if filename.endswith(".txt"):
             filepath = os.path.join(directory, filename)
             
@@ -27,7 +34,7 @@ def read_results(directory):
                 k = partitions.get("k", [])
                 
                 # Compute k (number of unique clusters), n (number of samples), d (dimensionality)
-                n = len(X)
+                n = len(y)
                 d = len(X[0]) if X else 0
                 k_true = len(set(y)) if y else 0
                
@@ -36,9 +43,18 @@ def read_results(directory):
                 data["dimensionality"] = d
                 data["n_clusters"] = k_true
                 data["k"] = k
+                data.pop('partitions')
                 all_results.append(data)
+                
     # Create a DataFrame from the collected results
     df = pd.DataFrame(all_results)
+
+    # Save to CSV if output_csv is specified
+    if output_csv:
+        os.makedirs(os.path.dirname(output_csv), exist_ok=True)  # Ensure the output directory exists
+        df.to_csv(output_csv, index=False)
+        print(f"Results saved to {output_csv}")
+
     return df
 
 def compute_metrics(df):
