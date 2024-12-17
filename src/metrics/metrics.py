@@ -96,6 +96,8 @@ def compute_correlation_per_x(df, x="dataset"):
         
         # Only select numerical columns (int and float types)
         df_filtered_value = df_filtered_value.select_dtypes(include=[float, int])
+        if x in df_filtered_value.columns:
+            df_filtered_value = df_filtered_value.drop(columns=x)
     
         # Compute Spearman rank correlation
         spearman_corr = df_filtered_value.corr(method='spearman')
@@ -155,6 +157,9 @@ results_df = read_results(results_directory, "out_files/merged.csv")
 # Extracting 'dt' values using regex
 results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d+\.\d+)', x).group(1)))
 
+# Drop rows where n_clusters = 1 or dt = 1.00
+results_df = results_df[(results_df['n_clusters'] != 1) & (results_df['dt'] != 1.0)]
+
 
 # Compute overall metrics and correlations
 correlation_matrix, _ = compute_correlation(results_df)
@@ -167,7 +172,7 @@ plt.tight_layout()
 plt.savefig("./figures/corr_matrix.png")
 
 # List of columns to iterate over for correlation
-columns_to_compute =  ["n_clusters", "algorithm", "n_samples", "dimensionality", "k", "dt", "dataset"]  # You can add more columns as needed
+columns_to_compute =  ["n_clusters", "n_samples", "k", "dt", "dataset"]  # You can add more columns as needed
 
 for column_name in columns_to_compute:
     # Compute the correlation per x (e.g., per dataset, per k, etc.)
@@ -175,7 +180,6 @@ for column_name in columns_to_compute:
     
     # Clean the data by dropping NaN values and sorting
     correlation_per_x = correlation_per_x.dropna()
-    correlation_per_x = correlation_per_x.T.sort_values(by=["rand_score"])
 
     # Plot the heatmap
     plt.figure(figsize=(10, 8))
