@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+import re
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -77,46 +78,35 @@ def compute_correlation(df):
     sigui_correlation = correlation_matrix['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
     
     return correlation_matrix, sigui_correlation
+# Function to compute correlations per x (e.g., per dataset, per k, etc.)
+def compute_correlation_per_x(df, x="dataset"):
+    correlation_per_x = {}
 
-def compute_correlation_per_dataset(df):
-    # Initialize a dictionary to store correlation per dataset
-    correlation_per_dataset = {}
-    df = df.drop(columns = ["n_clusters", "algorithm", "n_samples", "dimensionality", "k"])
-    # Compute correlation for each dataset individually
-    for dataset in df['dataset'].unique():
-        dataset_df = df[df['dataset'] == dataset]
-        numeric_df = dataset_df.select_dtypes(include=[float, int])
+    # List of columns to drop (keeping only the relevant ones for correlation)
+    columns = ["n_clusters", "algorithm", "n_samples", "dimensionality", "k", "dt", "dataset"]
+    columns_to_drop = [col for col in columns if col != x]
+    
+    # Drop irrelevant columns
+    df_filtered = df.drop(columns=columns_to_drop)
+    
+    # Compute correlation for each unique value in the specified column (x)
+    for x_ in df_filtered[x].unique():
+        # Filter DataFrame by the current value
+        df_filtered_value = df_filtered[df_filtered[x] == x_]
         
-        # Skip datasets with no variability in quality scores
-        if numeric_df.nunique().min() <= 1:  # Check if all columns have at least 2 unique values
-            continue
-        
+        # Only select numerical columns (int and float types)
+        df_filtered_value = df_filtered_value.select_dtypes(include=[float, int])
+    
         # Compute Spearman rank correlation
-        spearman_corr = numeric_df.corr(method='spearman')
-        sigui_correlation = spearman_corr['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
+        spearman_corr = df_filtered_value.corr(method='spearman')
         
-        correlation_per_dataset[dataset] = sigui_correlation
+        # Extract correlation with 'sigui' (assuming 'sigui' exists in the DataFrame)
+        if 'sigui' in spearman_corr.columns:
+            sigui_correlation = spearman_corr['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
+            correlation_per_x[x_] = sigui_correlation
 
-    # Convert dictionary to a DataFrame
-    return pd.DataFrame.from_dict(correlation_per_dataset)
+    return pd.DataFrame.from_dict(correlation_per_x, orient='index')
 
-def compute_correlation_per_k(df):
-    # Initialize a dictionary to store correlation per dataset
-    correlation_per_dataset = {}
-    df = df.drop(columns = ["n_clusters", "algorithm", "n_samples", "dimensionality", "dataset"])
-    # Compute correlation for each dataset individually
-    for dataset in df['k'].unique():
-        dataset_df = df[df['k'] == dataset]
-        numeric_df = dataset_df.select_dtypes(include=[float, int])
-        
-        # Compute Spearman rank correlation
-        spearman_corr = numeric_df.corr(method='spearman')
-        sigui_correlation = spearman_corr['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
-        
-        correlation_per_dataset[dataset] = sigui_correlation
-
-    # Convert dictionary to a DataFrame
-    return pd.DataFrame.from_dict(correlation_per_dataset)
 
 # Example function to visualize partitions
 def visualize_partitions(results_df, dataset_name):
@@ -160,8 +150,10 @@ def visualize_partitions(results_df, dataset_name):
 results_directory = "./results"
 
 # Read and process results
-results_df = read_results(results_directory)
-results_df[results_df["dataset"]=="blobs-P2-K2-N10000-dt0.1-S0"]
+results_df = read_results(results_directory, "out_files/merged.csv")
+
+# Extracting 'dt' values using regex
+results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d+\.\d+)', x).group(1)))
 
 
 # Compute overall metrics and correlations
@@ -174,30 +166,25 @@ plt.title("General Correlation Matrix")
 plt.tight_layout()
 plt.savefig("./figures/corr_matrix.png")
 
-# Compute correlation per dataset
-correlation_per_dataset = compute_correlation_per_dataset(results_df)
-correlation_per_dataset = correlation_per_dataset.dropna()
-correlation_per_dataset= correlation_per_dataset.T.sort_values(by=["rand_score"])
+# List of columns to iterate over for correlation
+columns_to_compute =  ["n_clusters", "algorithm", "n_samples", "dimensionality", "k", "dt", "dataset"]  # You can add more columns as needed
 
-# Plot all dataset correlations in a single heatmap
-plt.figure(figsize=(10, 8)) 
-sns.heatmap(correlation_per_dataset, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
-plt.title("Correlation of 'sigui' with Other Metrics for All Datasets")
-plt.tight_layout()
+for column_name in columns_to_compute:
+    # Compute the correlation per x (e.g., per dataset, per k, etc.)
+    correlation_per_x = compute_correlation_per_x(results_df, column_name)
+    
+    # Clean the data by dropping NaN values and sorting
+    correlation_per_x = correlation_per_x.dropna()
+    correlation_per_x = correlation_per_x.T.sort_values(by=["rand_score"])
 
-# Save the figure
-plt.savefig("./figures/corr_all_datasets.png")
+    # Plot the heatmap
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(correlation_per_x, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
+    
+    # Set title dynamically based on the column
+    plt.title(f"Correlation of 'sigui' with Other Metrics for All {column_name.capitalize()}")
+    plt.tight_layout()
 
-# Compute correlation per dataset
-correlation_per_k = compute_correlation_per_k(results_df)
-correlation_per_k  = correlation_per_k.dropna()
-correlation_per_k = correlation_per_k .T.sort_values(by=["rand_score"])
-
-# Plot all dataset correlations in a single heatmap
-plt.figure(figsize=(10, 8)) 
-sns.heatmap(correlation_per_k, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
-plt.title("Correlation of 'sigui' with Other Metrics for All k")
-plt.tight_layout()
-
-# Save the figure
-plt.savefig("./figures/corr_all_k.png")
+    # Save the heatmap figure
+    plt.savefig(f"./figures/corr_all_{column_name}.png")
+    plt.close()  # Close the plot to free memory for the next one
