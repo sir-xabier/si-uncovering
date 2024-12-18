@@ -22,6 +22,7 @@ def plot_clustering_results_with_spaces(datasets, clustering_spaces, save_path):
     - save_path: str
         Path to save the generated plots.
     """
+    
     # Define the palette and markers
     sns.set(style="whitegrid")  # Use a clean grid style
     palette = sns.color_palette("husl", 10)  # Color palette for clusters

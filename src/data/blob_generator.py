@@ -10,7 +10,7 @@ from sklearn import datasets
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-
+import itertools
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -52,7 +52,7 @@ def generate_scenario(
     :return: A tuple containing blob names and generated data.
     """
     data = []
-    class_counts = []
+    class_counts = []   
     names = []
 
     rng = np.random.default_rng(seed=initial_seed)
@@ -234,7 +234,7 @@ def generate_scenario_datasets(path, n_blobs, initial_seed, scenarios_file):
     :param initial_seed: Seed for reproducibility.
     :param scenarios_file: Path to the CSV file with scenario configurations.
     """
-    scenarios = pd.read_csv(path.replace("blobs/", scenarios_file))
+    scenarios = pd.read_csv(scenarios_file)
     
     for j,row in enumerate(scenarios.iterrows()):
         scenario_data = generate_scenario(
@@ -252,7 +252,7 @@ def generate_scenario_datasets(path, n_blobs, initial_seed, scenarios_file):
          
 
 def generate_data(
-    path, n_samples=500, n_blobs=10, initial_seed=500, random_state=131416, scenarios_file="../scenarios.csv"
+    path, n_samples=500, n_blobs=10, initial_seed=500, random_state=131416, scenarios_file="out_files/scenarios.csv"
 ):
     """
     Generate and save synthetic, real-world, and scenario-based test datasets.
@@ -289,6 +289,29 @@ if __name__ == "__main__":
     max_pred=35
     kh=15
     suffix=str(n_blobs)+"blobs"+str(kh)+"K"+str(k_max)+"S"+str(initial_seed)
+        
+    # Generate combinations for user-specific requirements
+    k_values_custom = [2, 5, 10, 50, 100]
+    p_values_custom = [64, 256, 1024]
+    n_values_custom = [100, 1000, 10000]
+    d_intervals_custom = [(0.1, 1.0)]
+
+    scenarios_custom = []
+    for k, p, n, (sl, su) in itertools.product(k_values_custom, p_values_custom, n_values_custom, d_intervals_custom):
+        scenario_name = f"K{k}_P{p}_N{n}_D{sl}-{su}"
+        scenarios_custom.append({
+            "Scenario": scenario_name,
+            "kl": k,
+            "ku": k,
+            "pl": p,
+            "pu": p,
+            "n": n,
+            "sl": sl,
+            "su": su
+        })
+
+    # Create a DataFrame for custom scenarios
+    df_custom = pd.DataFrame(scenarios_custom)
     
     # Ensure directories exist
     ensure_dirs_exist([
@@ -298,4 +321,10 @@ if __name__ == "__main__":
         "./figures"
     ])
     
+    
+    # Save the custom scenarios to a new file and display a preview
+    file_path_custom = "./out_files/scenarios.csv"
+    df_custom.to_csv(file_path_custom, index=False)
+    df_custom.head(), file_path_custom
+
     generate_data(path="./datasets/")

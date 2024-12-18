@@ -23,7 +23,7 @@ def read_results(directory, output_csv=None):
     for filename in tqdm(os.listdir(directory), desc="Reading files"):
         if filename.endswith(".txt"):
             filepath = os.path.join(directory, filename)
-            
+ 
             # Read the JSON data from the file
             with open(filepath, "r") as f:
                 data = json.load(f)
@@ -46,7 +46,7 @@ def read_results(directory, output_csv=None):
                 data["k"] = k
                 data.pop('partitions')
                 all_results.append(data)
-                
+
     # Create a DataFrame from the collected results
     df = pd.DataFrame(all_results)
 
@@ -106,9 +106,10 @@ def compute_correlation_per_x(df, x="dataset"):
         if 'sigui' in spearman_corr.columns:
             sigui_correlation = spearman_corr['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
             correlation_per_x[x_] = sigui_correlation
-
-    return pd.DataFrame.from_dict(correlation_per_x, orient='index')
-
+    df = pd.DataFrame.from_dict(correlation_per_x, orient='index')
+    df = df.sort_values(by='rand_score', ascending=False)
+    
+    return df
 
 # Example function to visualize partitions
 def visualize_partitions(results_df, dataset_name):
@@ -158,7 +159,14 @@ results_df = read_results(results_directory, "out_files/merged.csv")
 results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d+\.\d+)', x).group(1)))
 
 # Drop rows where n_clusters = 1 or dt = 1.00
-results_df = results_df[(results_df['n_clusters'] != 1) & (results_df['dt'] != 1.0)]
+results_df = results_df[(results_df['n_clusters'] != 1) & (results_df['dt'] != 1.00) & (results_df['k'] != 1) & (results_df['dimensionality'] == 2)]
+
+# Remove the seed from the dataset name
+results_df['dataset'] = results_df['dataset'].str.replace(r'-S\d+', '', regex=True)
+
+
+# Clustering oriented loss
+results_df = results_df[results_df['rand_score'] <= 0.5]
 
 
 # Compute overall metrics and correlations
@@ -172,7 +180,7 @@ plt.tight_layout()
 plt.savefig("./figures/corr_matrix.png")
 
 # List of columns to iterate over for correlation
-columns_to_compute =  ["n_clusters", "n_samples", "k", "dt", "dataset"]  # You can add more columns as needed
+columns_to_compute =  ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy"]  # You can add more columns as needed
 
 for column_name in columns_to_compute:
     # Compute the correlation per x (e.g., per dataset, per k, etc.)
@@ -192,3 +200,4 @@ for column_name in columns_to_compute:
     # Save the heatmap figure
     plt.savefig(f"./figures/corr_all_{column_name}.png")
     plt.close()  # Close the plot to free memory for the next one
+ 

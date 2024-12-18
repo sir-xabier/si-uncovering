@@ -3,7 +3,6 @@
 .vscode/
 
 datasets/
-genetic/
 results/
 out_files/
 figures/
