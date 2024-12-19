@@ -292,7 +292,7 @@ if __name__ == "__main__":
         
     # Generate combinations for user-specific requirements
     k_values_custom = [2, 5, 10, 50, 100]
-    p_values_custom = [64, 256, 1024]
+    p_values_custom = [64, 256, 512]
     n_values_custom = [100, 1000, 10000]
     d_intervals_custom = [(0.1, 1.0)]
 

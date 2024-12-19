@@ -3,16 +3,15 @@ import os
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 
-from sklearn.metrics import adjusted_rand_score, accuracy_score, pairwise_distances
-
 from sklearn.cluster import KMeans, SpectralClustering, HDBSCAN
 from sklearn.mixture import GaussianMixture
 from fcmeans import FCM
 import json
 
-from utils import sugeno_inspired_global_uncovering_index, compute_centroids 
+from utils import sugeno_inspired_global_uncovering_index, silhouette_score, calinski_harabasz_score, davies_bouldin_score, bic_fixed, xie_beni_ts, SSE
+    
 from scipy.optimize import linear_sum_assignment
-from sklearn.metrics import adjusted_rand_score, accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
+from sklearn.metrics import rand_score, adjusted_rand_score, accuracy_score, confusion_matrix, precision_score, recall_score, f1_score, pairwise_distances
 
 def relabel_predictions(labels, predictions):
     all_classes = np.union1d(np.unique(labels), np.unique(predictions))
@@ -69,9 +68,20 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     
     n_clusters = kwargs["n_clusters"]
     
-    # Compute cluster centroids for Sugeno-inspired index
-    centroids, _ = compute_centroids(data, predictions, n_clusters)
+    # Compute cluster centroids for Sugeno-inspired index 
+    centroids = model.cluster_centers_
+    
+    # Compute unsupervised metrics
+    sse = SSE(data, predictions, centroids)
+    
+    sigui = sugeno_inspired_global_uncovering_index(data, predictions)    
 
+    sc = silhouette_score(data, predictions)
+    ch = calinski_harabasz_score(data, predictions)
+    db = davies_bouldin_score(data, predictions)
+    bic = bic_fixed(data, predictions, sse)
+    xb = xie_beni_ts(predictions, centroids, sse)
+    
     for i, label in enumerate(predictions):
         if label == -1:  # Noise point
             # Compute distances to all centroids
@@ -79,18 +89,19 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
             # Assign to the nearest cluster
             predictions[i] = np.argmin(distances)
 
-    sigui = sugeno_inspired_global_uncovering_index(data, centroids, predictions)    
-    
     # Use LabelEncoder to map valid cluster labels to sequential integers
     label_encoder = LabelEncoder()
     predictions = label_encoder.fit_transform(predictions)
     labels = label_encoder.fit_transform(labels)
-    predictions = relabel_predictions(labels, predictions)
+    predictions = relabel_predictions(labels, predictions) 
     
-    # Compute metrics
-    rand_score = adjusted_rand_score(labels, predictions)
+    # Compute supervised metrics
+    ars = adjusted_rand_score(labels, predictions)
+    rs = rand_score(labels, predictions)
     acc, f1, precision, recall = compute_metrics(labels, predictions)
- 
+    
+
+     
     # Prepare partitions for visualization
     partitions = {
         "X": data.tolist(),
@@ -103,14 +114,21 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     result = {
         "dataset": dataset_name,
         "algorithm": algorithm,
-        "rand_score": rand_score,
+        "rand_score": rs,
+        "adjusted_rand_score": ars,
         "accuracy": acc,
         "f1_score": f1,
         "precision": precision,
         "recall": recall,
         "sigui": sigui,
+        "sse": sse,  # SSE value
+        "sc": sc,    # Silhouette Score
+        "ch": ch,    # Calinski-Harabasz Score
+        "db": db,    # Davies-Bouldin Score
+        "bic": bic,  # BIC Score
+        "xb": xb,    # Xie-Beni Index
         "partitions": partitions  # Include the partitions
-    } 
+    }
     
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{n_clusters}.txt")

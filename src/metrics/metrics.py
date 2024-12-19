@@ -23,30 +23,41 @@ def read_results(directory, output_csv=None):
     for filename in tqdm(os.listdir(directory), desc="Reading files"):
         if filename.endswith(".txt"):
             filepath = os.path.join(directory, filename)
- 
-            # Read the JSON data from the file
-            with open(filepath, "r") as f:
-                data = json.load(f)
+            
+            try:
+                # Open and check file content
+                with open(filepath, "r") as f:
+                    content = f.read().strip()  # Read the entire file and strip whitespace
+                    if not content:  # Check if file is empty
+                        raise ValueError(f"File {filepath} is empty.")
+                    
+                    # Parse JSON content
+                    data = json.loads(content)
+                    
+                    # Extract partitions info
+                    partitions = data.get("partitions", {})
+                    X = partitions.get("X", [])
+                    y = partitions.get("y", [])
+                    k = partitions.get("k", [])
+                    
+                    # Compute k (number of unique clusters), n (number of samples), d (dimensionality)
+                    n = len(y)
+                    d = len(X[0]) if X else 0
+                    k_true = len(set(y)) if y else 0
                 
-                # Extract partitions info
-                partitions = data.get("partitions", {})
-                X = partitions.get("X", [])
-                y = partitions.get("y", [])
-                k = partitions.get("k", [])
-                
-                # Compute k (number of unique clusters), n (number of samples), d (dimensionality)
-                n = len(y)
-                d = len(X[0]) if X else 0
-                k_true = len(set(y)) if y else 0
-               
-                # Add these values to the result
-                data["n_samples"] = n
-                data["dimensionality"] = d
-                data["n_clusters"] = k_true
-                data["k"] = k
-                data.pop('partitions')
-                all_results.append(data)
+                    # Add these values to the result
+                    data["n_samples"] = n
+                    data["dimensionality"] = d
+                    data["n_clusters"] = k_true
+                    data["k"] = k
+                    data.pop('partitions')
+                    all_results.append(data)
 
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON format in file {filepath}: {e}")
+            except Exception as e:
+                raise ValueError(f"An error occurred while processing {filepath}: {e}")
+    
     # Create a DataFrame from the collected results
     df = pd.DataFrame(all_results)
 
@@ -157,9 +168,6 @@ results_df = read_results(results_directory, "out_files/merged.csv")
 
 # Extracting 'dt' values using regex
 results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d+\.\d+)', x).group(1)))
-
-# Drop rows where n_clusters = 1 or dt = 1.00
-results_df = results_df[(results_df['n_clusters'] != 1) & (results_df['dt'] != 1.00) & (results_df['k'] != 1) & (results_df['dimensionality'] == 2)]
 
 # Remove the seed from the dataset name
 results_df['dataset'] = results_df['dataset'].str.replace(r'-S\d+', '', regex=True)
