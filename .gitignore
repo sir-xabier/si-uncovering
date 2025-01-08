@@ -1,7 +1,7 @@
 # Ignore .venv .vscode
 .venv/
 .vscode/
-
+venv/
 datasets/
 results/
 out_files/

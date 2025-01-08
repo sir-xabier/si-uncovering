@@ -291,9 +291,9 @@ if __name__ == "__main__":
     suffix=str(n_blobs)+"blobs"+str(kh)+"K"+str(k_max)+"S"+str(initial_seed)
         
     # Generate combinations for user-specific requirements
-    k_values_custom = [2, 5, 10, 50, 100]
-    p_values_custom = [64, 256, 512]
-    n_values_custom = [100, 1000, 10000]
+    k_values_custom = [2, 4, 8, 16, 32]
+    p_values_custom = [2, 5, 10]
+    n_values_custom = [64, 128, 1024]
     d_intervals_custom = [(0.1, 1.0)]
 
     scenarios_custom = []

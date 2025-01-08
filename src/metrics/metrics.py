@@ -78,12 +78,12 @@ def compute_metrics(df):
     
     return summary, grouped
 
-def compute_correlation(df):
+def compute_correlation(df, corr = "pearson"):
     # Select only numeric columns (exclude non-numeric columns like 'dataset', 'algorithm')
     numeric_df = df.select_dtypes(include=[float, int])
 
     # Correlation between 'sigui' and other metrics (general)
-    correlation_matrix = numeric_df.corr(method='spearman')
+    correlation_matrix = numeric_df.corr(method= corr)
     
     # Correlation between 'sigui' and other metrics
     sigui_correlation = correlation_matrix['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
@@ -94,7 +94,7 @@ def compute_correlation_per_x(df, x="dataset"):
     correlation_per_x = {}
 
     # List of columns to drop (keeping only the relevant ones for correlation)
-    columns = ["n_clusters", "algorithm", "n_samples", "dimensionality", "k", "dt", "dataset"]
+    columns = ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy_group", "algorithm", "rand_score_group"] 
     columns_to_drop = [col for col in columns if col != x]
     
     # Drop irrelevant columns
@@ -117,9 +117,9 @@ def compute_correlation_per_x(df, x="dataset"):
         if 'sigui' in spearman_corr.columns:
             sigui_correlation = spearman_corr['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
             correlation_per_x[x_] = sigui_correlation
-    df = pd.DataFrame.from_dict(correlation_per_x, orient='index')
-    df = df.sort_values(by='rand_score', ascending=False)
-    
+    df = pd.DataFrame.from_dict(correlation_per_x)
+    df = df.reindex(sorted(df.columns), axis=1).T
+
     return df
 
 # Example function to visualize partitions
@@ -173,22 +173,36 @@ results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d
 results_df['dataset'] = results_df['dataset'].str.replace(r'-S\d+', '', regex=True)
 
 
-# Clustering oriented loss
-results_df = results_df[results_df['rand_score'] <= 0.5]
+# Assuming results_df already exists and has an 'accuracy' column
+bins = [0, 0.25, 0.5, 0.75, 1]
+labels = ['0-0.25', '0.25-0.5', '0.5-0.75', '0.75-1']
 
-
+# Create a new column with accuracy groups
+results_df['accuracy_group'] = pd.cut(results_df['accuracy'], bins=bins, labels=labels, include_lowest=True)
+results_df['rand_score_group'] = pd.cut(results_df['rand_score'], bins=bins, labels=labels, include_lowest=True)
+results_df = results_df[results_df['n_clusters'] > 5] 
+ 
 # Compute overall metrics and correlations
-correlation_matrix, _ = compute_correlation(results_df)
+correlation_matrix_spearman, _ = compute_correlation(results_df, corr = "spearman")
+correlation_matrix_pearson, _ = compute_correlation(results_df, corr = "pearson")
 
 # Plot general correlation matrix
 plt.figure(figsize=(10, 8))
-sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f", cbar=True, vmin=-1, vmax=1)
+sns.heatmap(correlation_matrix_spearman, annot=True, cmap="coolwarm", fmt=".2f", cbar=True, vmin=-1, vmax=1)
 plt.title("General Correlation Matrix")
 plt.tight_layout()
-plt.savefig("./figures/corr_matrix.png")
+plt.savefig("./figures/corr_matrix_spearman.png")
+
+# Plot general correlation matrix
+plt.figure(figsize=(10, 8))
+sns.heatmap(correlation_matrix_pearson, annot=True, cmap="coolwarm", fmt=".2f", cbar=True, vmin=-1, vmax=1)
+plt.title("General Correlation Matrix")
+plt.tight_layout()
+plt.savefig("./figures/corr_matrix_pearson.png")
+
 
 # List of columns to iterate over for correlation
-columns_to_compute =  ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy"]  # You can add more columns as needed
+columns_to_compute =  ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy_group", "rand_score_group"]  # You can add more columns as needed
 
 for column_name in columns_to_compute:
     # Compute the correlation per x (e.g., per dataset, per k, etc.)
@@ -196,11 +210,29 @@ for column_name in columns_to_compute:
     
     # Clean the data by dropping NaN values and sorting
     correlation_per_x = correlation_per_x.dropna()
+    if column_name =="dataset":
+        # Adjust the figure size for 450 variables
+        plt.figure(figsize=(45, 40))
 
-    # Plot the heatmap
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(correlation_per_x, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
+        # Plot the heatmap
+        sns.heatmap(
+            correlation_per_x, 
+            annot=False, 
+            cmap="coolwarm", 
+            cbar=True, 
+            vmin=-1, 
+            vmax=1
+        )
+
+        # Rotate and adjust label sizes
+        plt.xticks(rotation=90, fontsize=8)
+        plt.yticks(fontsize=8)
     
+    else:
+        # Plot the heatmap
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(correlation_per_x, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
+        
     # Set title dynamically based on the column
     plt.title(f"Correlation of 'sigui' with Other Metrics for All {column_name.capitalize()}")
     plt.tight_layout()
