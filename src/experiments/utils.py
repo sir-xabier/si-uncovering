@@ -59,7 +59,7 @@ def sugeno_inspired_uncovering_index(X, c, alpha):
 
     return np.max(result)
 
- def sugeno_inspired_global_uncovering_index(X, C, labels, alpha = 0.5, get_info=False):
+def sugeno_inspired_global_uncovering_index(X, C, labels, alpha = 0.5, get_info=False):
     """
     Computes the Sugeno-inspired global uncovering index for the entire dataset.
     

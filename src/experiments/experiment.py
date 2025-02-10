@@ -5,7 +5,6 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 from sklearn.cluster import KMeans, SpectralClustering, HDBSCAN
 from sklearn.mixture import GaussianMixture
-from fcmeans import FCM
 import json
 
 from utils import sugeno_inspired_global_uncovering_index, silhouette_score, calinski_harabasz_score, davies_bouldin_score, bic_fixed, xie_beni_ts, SSE
@@ -100,20 +99,20 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     rs = rand_score(labels, predictions)
     acc, f1, precision, recall = compute_metrics(labels, predictions)
     
-
-     
-    # Prepare partitions for visualization
-    partitions = {
-        "X": data.tolist(),
-        "y": labels.tolist(),
-        "predictions": predictions.tolist(),
-        "k": n_clusters
-    }
+    labels = labels.tolist()
+    X = data.tolist()
+    n = len(labels.tolist())
+    d = len(X[0]) if X else 0
+    k_true = len(set(labels.tolist())) if y else 0
     
     # Save results
     result = {
         "dataset": dataset_name,
         "algorithm": algorithm,
+        "k": n_clusters,
+        "n": n,
+        "d": d,
+        "k_true": k_true,
         "rand_score": rs,
         "adjusted_rand_score": ars,
         "accuracy": acc,
@@ -143,7 +142,7 @@ def main():
     parser.add_argument("-data_path", type=str, required=True, help="Path to dataset file (npy format)")
     parser.add_argument("-output_dir", type=str, default="results", help="Directory to save results")   
     parser.add_argument("-n_clusters", type=int, default=-1, help="Number of clusters")
-    parser.add_argument("-alpha", type=int, default=0.5, help="Alpha parameter for F")
+    parser.add_argument("-alpha", type=  float, default=0.5, help="Alpha parameter for F")
     
     parser.add_argument("--random_state", type=int, default=131416, help="Random seed")
 

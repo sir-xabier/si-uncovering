@@ -9,7 +9,7 @@ OUTPUT_DIR="results"
 
 # List of algorithms to run
 ALGORITHMS=("kmeans")
-ALPHA=(0 0.25 0.5 0.75 1)  
+ALPHA=(0. 0.25 0.5 0.75 1.)  
 
 # Define specific k values, including 2, 4, 8, 16, and 32
 K_VALUES=(2 4 8 16 32 3 10 20 25 50)
@@ -25,13 +25,13 @@ for dataset in "$DATASET_DIR"/*.npy; do
             # Run experiments for each algorithm in parallel
             for algorithm in "${ALGORITHMS[@]}"; do
                 # Run the Python script for each combination
-                tsp ./.venv/bin/python3 src/experiments/experiment.py \
+                tsp ./venv/bin/python3 src/experiments/experiment.py \
                     -algorithm "$algorithm" \
                     -dataset "$dataset_name" \
                     -data_path "$dataset" \
                     -output_dir "$OUTPUT_DIR" \
                     -n_clusters "$k" \
-                    -alpha "$alpha" \
+                    -alpha $alpha \
                     --random_state 31416
             done
         done
