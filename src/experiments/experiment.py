@@ -8,7 +8,6 @@ from sklearn.mixture import GaussianMixture
 import json
 
 from utils import sugeno_inspired_global_uncovering_index, silhouette_score, calinski_harabasz_score, davies_bouldin_score, bic_fixed, xie_beni_ts, SSE
-    
 from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import rand_score, adjusted_rand_score, accuracy_score, confusion_matrix, precision_score, recall_score, f1_score, pairwise_distances
 

@@ -5,6 +5,7 @@ from typing import Generator, List, Tuple, Union
 from sklearn.metrics import silhouette_score as sc
 from sklearn.metrics import calinski_harabasz_score as chc
 from sklearn.metrics import davies_bouldin_score as dbc
+from scipy.stats import gmean
 
 
 def uncovering(x, c):
@@ -56,7 +57,6 @@ def sugeno_inspired_uncovering_index(X, c, alpha):
     for i in range(len(uncovering_values)):
         remaining_values = uncovering_values[:i] + uncovering_values[i+1:]
         result.append(np.minimum(uncovering_values[i], F(remaining_values, alpha)))
-        print(F(remaining_values, alpha))
     return np.max(result)
 
 def sugeno_inspired_global_uncovering_index(X, labels, alpha = 0.5, get_info=False):
@@ -77,25 +77,25 @@ def sugeno_inspired_global_uncovering_index(X, labels, alpha = 0.5, get_info=Fal
     labels = np.array(labels)  # Ensure labels is a NumPy array
     unique_y = np.unique(labels)
     
-     for c_i in unique_y:
-            # Extract points assigned to cluster `c_i`
-            X_c = X[labels == c_i]
-            c = X_c.mean(axis=0)
-            
-            if X_c.shape[0] <= 1:  # Handle empty clusters
-                partial_siui.append(0.0)
-            else:    
-                # Compute partial SIUI for the current cluster
-                partial_value = sugeno_inspired_uncovering_index(X_c, c) 
-                partial_siui.append(partial_value * (X_c.shape[0] / n))
+    for c_i in unique_y:
+        # Extract points assigned to cluster `c_i`
+        X_c = X[labels == c_i]
+        c = X_c.mean(axis=0)
         
-        if len(partial_siui) < unique_y.shape[0]:
-            pass  
-        # Sum partial SIUI values to get the global uncovering index
-        if get_info:
-            return np.sum(partial_siui), partial_siui
-        else:
-            return np.sum(partial_siui)
+        if X_c.shape[0] <= 1:  # Handle empty clusters
+            partial_siui.append(0.0)
+        else:    
+            # Compute partial SIUI for the current cluster
+            partial_value = sugeno_inspired_uncovering_index(X_c, c, alpha) 
+            partial_siui.append(partial_value * (X_c.shape[0] / n))
+
+    if len(partial_siui) < unique_y.shape[0]:
+        pass  
+    # Sum partial SIUI values to get the global uncovering index
+    if get_info:
+        return np.sum(partial_siui), partial_siui
+    else:
+        return np.sum(partial_siui)
  
 def compute_centroids(X, labels, n_clusters):
     centroids = []
