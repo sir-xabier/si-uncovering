@@ -33,24 +33,6 @@ def read_results(directory, output_csv=None):
                     
                     # Parse JSON content
                     data = json.loads(content)
-                    
-                    # Extract partitions info
-                    partitions = data.get("partitions", {})
-                    X = partitions.get("X", [])
-                    y = partitions.get("y", [])
-                    k = partitions.get("k", [])
-                    
-                    # Compute k (number of unique clusters), n (number of samples), d (dimensionality)
-                    n = len(y)
-                    d = len(X[0]) if X else 0
-                    k_true = len(set(y)) if y else 0
-                
-                    # Add these values to the result
-                    data["n_samples"] = n
-                    data["dimensionality"] = d
-                    data["n_clusters"] = k_true
-                    data["k"] = k
-                    data.pop('partitions')
                     all_results.append(data)
 
             except json.JSONDecodeError as e:

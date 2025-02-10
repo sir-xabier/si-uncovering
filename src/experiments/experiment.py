@@ -99,12 +99,12 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     rs = rand_score(labels, predictions)
     acc, f1, precision, recall = compute_metrics(labels, predictions)
     
-    labels = labels.tolist()
+    y = labels.tolist()
     X = data.tolist()
-    n = len(labels.tolist())
+    n = len(y)
     d = len(X[0]) if X else 0
-    k_true = len(set(labels.tolist())) if y else 0
-    
+    k_true = len(set(y)) if y else 0
+
     # Save results
     result = {
         "dataset": dataset_name,
