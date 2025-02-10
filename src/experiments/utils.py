@@ -56,10 +56,10 @@ def sugeno_inspired_uncovering_index(X, c, alpha):
     for i in range(len(uncovering_values)):
         remaining_values = uncovering_values[:i] + uncovering_values[i+1:]
         result.append(np.minimum(uncovering_values[i], F(remaining_values, alpha)))
-
+        print(F(remaining_values, alpha))
     return np.max(result)
 
-def sugeno_inspired_global_uncovering_index(X, C, labels, alpha = 0.5, get_info=False):
+def sugeno_inspired_global_uncovering_index(X, labels, alpha = 0.5, get_info=False):
     """
     Computes the Sugeno-inspired global uncovering index for the entire dataset.
     
@@ -73,23 +73,29 @@ def sugeno_inspired_global_uncovering_index(X, C, labels, alpha = 0.5, get_info=
     """
     partial_siui = []
     n = X.shape[0]  # Total number of data points
+    
     labels = np.array(labels)  # Ensure labels is a NumPy array
+    unique_y = np.unique(labels)
     
-    for c_i, c in enumerate(C):
-        # Extract points assigned to cluster `c_i`
-        X_c = X[labels == c_i]
+     for c_i in unique_y:
+            # Extract points assigned to cluster `c_i`
+            X_c = X[labels == c_i]
+            c = X_c.mean(axis=0)
+            
+            if X_c.shape[0] <= 1:  # Handle empty clusters
+                partial_siui.append(0.0)
+            else:    
+                # Compute partial SIUI for the current cluster
+                partial_value = sugeno_inspired_uncovering_index(X_c, c) 
+                partial_siui.append(partial_value * (X_c.shape[0] / n))
         
-        if X_c.shape[0] > 1:  # Ignore empty or single-point clusters
-            partial_value = sugeno_inspired_uncovering_index(X_c, c. alpha)
-            partial_siui.append(partial_value * (X_c.shape[0] / n))
+        if len(partial_siui) < unique_y.shape[0]:
+            pass  
+        # Sum partial SIUI values to get the global uncovering index
+        if get_info:
+            return np.sum(partial_siui), partial_siui
         else:
-            partial_siui.append(0.0)
-    
-    # Sum partial SIUI values to get the global uncovering index
-    if get_info:
-        return np.sum(partial_siui), partial_siui
-    else:
-        return np.sum(partial_siui)
+            return np.sum(partial_siui)
  
 def compute_centroids(X, labels, n_clusters):
     centroids = []
@@ -197,3 +203,6 @@ def xie_beni_ts(y, centroids, sse):
                     min_dispersion= aux
         
     return (intraclass_similarity + (1/(K * (K-1))) * cluster_dispersion) / (1/K + min_dispersion)
+
+
+ 

@@ -72,9 +72,7 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     
     # Compute unsupervised metrics
     sse = SSE(data, predictions, centroids)
-    
     sigui = sugeno_inspired_global_uncovering_index(data, predictions, alpha)    
-
     sc = silhouette_score(data, predictions)
     ch = calinski_harabasz_score(data, predictions)
     db = davies_bouldin_score(data, predictions)
@@ -126,7 +124,6 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "db": db,    # Davies-Bouldin Score
         "bic": bic,  # BIC Score
         "xb": xb,    # Xie-Beni Index
-        "partitions": partitions  # Include the partitions
     }
     
     os.makedirs(output_dir, exist_ok=True)

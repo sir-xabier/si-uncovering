@@ -33,6 +33,13 @@ def read_results(directory, output_csv=None):
                     
                     # Parse JSON content
                     data = json.loads(content)
+                    data["n_clusters"] = data["k_true"]  
+                    data["n_samples"] = data["n"]
+                    data["dimensionality"] = data["d"]
+                    del data["k_true"]
+                    del data["d"]
+                    del data["n"]
+
                     all_results.append(data)
 
             except json.JSONDecodeError as e:
