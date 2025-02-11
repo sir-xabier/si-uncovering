@@ -33,7 +33,7 @@ def read_results(directory, output_csv=None):
                     
                     # Parse JSON content
                     data = json.loads(content)
-                    data.pop('partitions')
+                    #data.pop('partitions')
                     all_results.append(data)
 
             except json.JSONDecodeError as e:
@@ -184,7 +184,7 @@ plt.savefig("./figures/corr_matrix_pearson.png")
 
 
 # List of columns to iterate over for correlation
-columns_to_compute =  ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy_group", "rand_score_group"]  # You can add more columns as needed
+columns_to_compute =  ["alpha", "dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy_group", "rand_score_group"]  # You can add more columns as needed
 
 for column_name in columns_to_compute:
     # Compute the correlation per x (e.g., per dataset, per k, etc.)
@@ -199,7 +199,7 @@ for column_name in columns_to_compute:
         # Plot the heatmap
         sns.heatmap(
             correlation_per_x, 
-            annot=False, 
+            annot=True, 
             cmap="coolwarm", 
             cbar=True, 
             vmin=-1, 

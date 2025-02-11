@@ -7,7 +7,7 @@ from sklearn.cluster import KMeans, SpectralClustering, HDBSCAN
 from sklearn.mixture import GaussianMixture
 import json
 
-from utils import sugeno_inspired_global_uncovering_index, silhouette_score, calinski_harabasz_score, davies_bouldin_score, bic_fixed, xie_beni_ts, SSE
+from utils import sugeno_inspired_global_uncovering_index, silhouette_score, calinski_harabasz_score, davies_bouldin_score, bic_fixed, xie_beni_ts, SSE, global_covering_index
 from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import rand_score, adjusted_rand_score, accuracy_score, confusion_matrix, precision_score, recall_score, f1_score, pairwise_distances
 
@@ -56,7 +56,7 @@ def get_clustering_algorithm(name, **kwargs):
 def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwargs):
     if kwargs["n_clusters"] == -1:
         kwargs["n_clusters"] = len(np.unique(labels))
-
+    alpha = kwargs["alpha"]
     model = get_clustering_algorithm(algorithm, **kwargs)
     if algorithm != "fcm":  
         predictions = model.fit_predict(data)
@@ -71,7 +71,9 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     
     # Compute unsupervised metrics
     sse = SSE(data, predictions, centroids)
-    sigui = sugeno_inspired_global_uncovering_index(data, predictions)    
+    sigui = sugeno_inspired_global_uncovering_index(data, predictions, alpha)  
+    gci =  global_covering_index(data, predictions)
+
     sc = silhouette_score(data, predictions)
     ch = calinski_harabasz_score(data, predictions)
     db = davies_bouldin_score(data, predictions)
@@ -117,6 +119,7 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "k": n_clusters,
         "n_samples": n,
         "dimensionality": d,
+        "alpha": alpha,
         "n_clusters": k_true,
         "rand_score": rs,
         "adjusted_rand_score": ars,
@@ -125,17 +128,18 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "precision": precision,
         "recall": recall,
         "sigui": sigui,
+        "gci": gci,
         "sse": sse,  # SSE value
         "sc": sc,    # Silhouette Score
         "ch": ch,    # Calinski-Harabasz Score
         "db": db,    # Davies-Bouldin Score
         "bic": bic,  # BIC Score
-        "xb": xb   # Xie-Beni Index
+        "xb": xb    # Xie-Beni Index,
+        #"partitions": partitions  # Include the partitions
     }
-    # "partitions": partitions   Include the partitions
     
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{n_clusters}.txt")
+    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{n_clusters}_a{alpha}.txt")
     with open(output_path, "w") as f:
         f.write(json.dumps(result, indent=4))
         
@@ -147,7 +151,8 @@ def main():
     parser.add_argument("-data_path", type=str, required=True, help="Path to dataset file (npy format)")
     parser.add_argument("-output_dir", type=str, default="results", help="Directory to save results")   
     parser.add_argument("-n_clusters", type=int, default=-1, help="Number of clusters")
-
+    parser.add_argument("-alpha", type=  float, default=0.5, help="Alpha parameter for F")
+    
     parser.add_argument("--random_state", type=int, default=131416, help="Random seed")
 
     parser.add_argument("--kmeans_max_iter", type=int, default=300, help="Maximum number of iterations for KMeans")

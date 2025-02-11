@@ -21,13 +21,33 @@ def uncovering(x, c):
     distance = np.linalg.norm(x - c)  # Euclidean distance
     return 1 - np.exp(2 * np.log(10) * (-distance / (5 * np.sqrt(D))))
 
-def generate_decreasing_sequence(n, r = 0.75):
-    S = (1 - r) / (1 - r**n)  # Factor de normalización
-    sequence = [S * r**(i) for i in range(n)]
+def generate_decreasing_sequence(n, a):
+    S = (1 - a) / (1 - a**n)  # Factor de normalización
+    sequence = [S * a**(i) for i in range(n)]
     
     return np.array(sequence)
 
-def sugeno_inspired_uncovering_index(X, c):
+def global_covering_index(X, labels):
+    partial_mci = []
+    n = X.shape[0]  # Total number of data points
+    
+    labels = np.array(labels)  # Ensure labels is a NumPy array
+    unique_y = np.unique(labels)
+    
+    for c_i in unique_y:
+        # Extract points assigned to cluster `c_i`
+        X_c = X[labels == c_i]
+        c = X_c.mean(axis=0)
+        
+        if X_c.shape[0] <= 1:  # Handle empty clusters
+            partial_mci.append(0.0)
+        else:    
+            # Compute partial SIUI for the current cluster
+            mci = np.mean([uncovering(j, c) for j in X_c])
+            partial_mci.append(mci)
+    return np.mean(partial_mci)
+
+def sugeno_inspired_uncovering_index(X, c, alpha):
     """
     Computes the uncovering index for a set of points `X` with respect to cluster `c`.
     
@@ -38,17 +58,20 @@ def sugeno_inspired_uncovering_index(X, c):
     Returns:
     - Maximum uncovering value.
     """
-    uncovering_values = [uncovering(i, c) for i in X]
+    uncovering_values = [uncovering(i, c) for i in X] 
     n = len(uncovering_values)
-    w = generate_decreasing_sequence(n-1)[::]
+    uncovering_values = np.sort(uncovering_values)[::-1].tolist()
+
+    w = generate_decreasing_sequence(n-1, alpha) 
     result = []
     sum_ = np.sum(uncovering_values) 
     for i in range(n):
-        remaining_values = np.array(uncovering_values[:i] + uncovering_values[i+1:])
+        remaining_values = uncovering_values[:i] + uncovering_values[i+1:]
+        remaining_values = np.array(remaining_values)
         result.append(np.minimum(uncovering_values[i], np.sum(w * remaining_values)))
     return np.max(result)
 
-def sugeno_inspired_global_uncovering_index(X, labels, get_info=False):
+def sugeno_inspired_global_uncovering_index(X, labels, alpha, get_info=False):
     """
     Computes the Sugeno-inspired global uncovering index for the entire dataset.
     
@@ -75,7 +98,7 @@ def sugeno_inspired_global_uncovering_index(X, labels, get_info=False):
             partial_siui.append(0.0)
         else:    
             # Compute partial SIUI for the current cluster
-            partial_value = sugeno_inspired_uncovering_index(X_c, c) 
+            partial_value = sugeno_inspired_uncovering_index(X_c, c, alpha) 
             partial_siui.append(partial_value * (X_c.shape[0] / n))
 
     if len(partial_siui) < unique_y.shape[0]:
