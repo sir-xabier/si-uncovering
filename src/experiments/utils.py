@@ -60,8 +60,8 @@ def sugeno_inspired_uncovering_index(X, c, alpha):
     """
     uncovering_values = [uncovering(i, c) for i in X] 
     n = len(uncovering_values)
-    uncovering_values = np.sort(uncovering_values)[::-1].tolist()
-
+    uncovering_values = np.sort(uncovering_values).tolist()
+    #[::-1]
     w = generate_decreasing_sequence(n-1, alpha) 
     result = []
     sum_ = np.sum(uncovering_values) 
