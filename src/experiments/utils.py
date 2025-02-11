@@ -22,24 +22,15 @@ def uncovering(x, c):
     D = x.shape[-1]  # Dimensionality of `x`
     distance = np.linalg.norm(x - c)  # Euclidean distance
     return 1 - np.exp(2 * np.log(10) * (-distance / (5 * np.sqrt(D))))
-     
-def F(A, alpha):
-    """
-    Computes the convex combination of the arithmetic and geometric mean.
 
-    Parameters:
-    - A: List or array of values.
-    - alpha: Weight for the arithmetic mean (between 0 and 1).
+def generate_decreasing_sequence(n, r = 0.75):
+    S = (1 - r) / (1 - r**n)  # Factor de normalización
+    sequence = [S * r**(i) for i in range(n)]
+    
+    return sequence
 
-    Returns:
-    - Convex combination of arithmetic and geometric mean.
-    """
-    arithmetic_mean = np.mean(A)
-    geometric_mean = gmean(A) 
 
-    return alpha * arithmetic_mean + (1 - alpha) * geometric_mean
- 
-def sugeno_inspired_uncovering_index(X, c, alpha):
+def sugeno_inspired_uncovering_index(X, c):
     """
     Computes the uncovering index for a set of points `X` with respect to cluster `c`.
     
@@ -52,14 +43,16 @@ def sugeno_inspired_uncovering_index(X, c, alpha):
     - Maximum uncovering value.
     """
     uncovering_values = [uncovering(i, c) for i in X]
+    n = len(uncovering_values)
+    w = generate_decreasing_sequence(n-1)[::]
     result = []
-    
-    for i in range(len(uncovering_values)):
+    sum_ = uncovering_values.sum() 
+    for i in range(n):
         remaining_values = uncovering_values[:i] + uncovering_values[i+1:]
-        result.append(np.minimum(uncovering_values[i], F(remaining_values, alpha)))
+        result.append(np.minimum(uncovering_values[i], np.sum(w * remaining_values)))
     return np.max(result)
 
-def sugeno_inspired_global_uncovering_index(X, labels, alpha = 0.5, get_info=False):
+def sugeno_inspired_global_uncovering_index(X, labels, get_info=False):
     """
     Computes the Sugeno-inspired global uncovering index for the entire dataset.
     

@@ -56,7 +56,7 @@ def get_clustering_algorithm(name, **kwargs):
 def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwargs):
     if kwargs["n_clusters"] == -1:
         kwargs["n_clusters"] = len(np.unique(labels))
-    alpha = kwargs["alpha"]
+
     model = get_clustering_algorithm(algorithm, **kwargs)
     if algorithm != "fcm":  
         predictions = model.fit_predict(data)
@@ -71,7 +71,7 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     
     # Compute unsupervised metrics
     sse = SSE(data, predictions, centroids)
-    sigui = sugeno_inspired_global_uncovering_index(data, predictions, alpha)    
+    sigui = sugeno_inspired_global_uncovering_index(data, predictions)    
     sc = silhouette_score(data, predictions)
     ch = calinski_harabasz_score(data, predictions)
     db = davies_bouldin_score(data, predictions)
@@ -102,14 +102,22 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
     d = len(X[0]) if X else 0
     k_true = len(set(y)) if y else 0
 
+
+    # Prepare partitions for visualization
+    partitions = {
+        "X": data.tolist(),
+        "y": labels.tolist(),
+        "predictions": predictions.tolist(),
+    }
+    
     # Save results
     result = {
         "dataset": dataset_name,
         "algorithm": algorithm,
         "k": n_clusters,
-        "n": n,
-        "d": d,
-        "k_true": k_true,
+        "n_samples": n,
+        "dimensionality": d,
+        "n_clusters": k_true,
         "rand_score": rs,
         "adjusted_rand_score": ars,
         "accuracy": acc,
@@ -123,10 +131,11 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "db": db,    # Davies-Bouldin Score
         "bic": bic,  # BIC Score
         "xb": xb,    # Xie-Beni Index
+        "partitions": partitions  # Include the partitions
     }
     
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{n_clusters}_a{alpha}.txt")
+    output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{n_clusters}.txt")
     with open(output_path, "w") as f:
         f.write(json.dumps(result, indent=4))
         
@@ -138,8 +147,7 @@ def main():
     parser.add_argument("-data_path", type=str, required=True, help="Path to dataset file (npy format)")
     parser.add_argument("-output_dir", type=str, default="results", help="Directory to save results")   
     parser.add_argument("-n_clusters", type=int, default=-1, help="Number of clusters")
-    parser.add_argument("-alpha", type=  float, default=0.5, help="Alpha parameter for F")
-    
+
     parser.add_argument("--random_state", type=int, default=131416, help="Random seed")
 
     parser.add_argument("--kmeans_max_iter", type=int, default=300, help="Maximum number of iterations for KMeans")

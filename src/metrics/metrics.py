@@ -33,13 +33,7 @@ def read_results(directory, output_csv=None):
                     
                     # Parse JSON content
                     data = json.loads(content)
-                    data["n_clusters"] = data["k_true"]  
-                    data["n_samples"] = data["n"]
-                    data["dimensionality"] = data["d"]
-                    del data["k_true"]
-                    del data["d"]
-                    del data["n"]
-
+                    data.pop('partitions')
                     all_results.append(data)
 
             except json.JSONDecodeError as e:
@@ -81,9 +75,10 @@ def compute_correlation(df, corr = "pearson"):
 # Function to compute correlations per x (e.g., per dataset, per k, etc.)
 def compute_correlation_per_x(df, x="dataset"):
     correlation_per_x = {}
-
     # List of columns to drop (keeping only the relevant ones for correlation)
-    columns = ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy_group", "algorithm", "rand_score_group"] 
+    columns = ['dataset', 'algorithm', 'k', 'sse', 'sc',
+       'ch', 'db', 'bic', 'xb', 'n_clusters', 'n_samples', 'dimensionality',
+       'alpha', 'dt', 'accuracy_group', 'rand_score_group'] 
     columns_to_drop = [col for col in columns if col != x]
     
     # Drop irrelevant columns
@@ -161,7 +156,6 @@ results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d
 # Remove the seed from the dataset name
 results_df['dataset'] = results_df['dataset'].str.replace(r'-S\d+', '', regex=True)
 
-
 # Assuming results_df already exists and has an 'accuracy' column
 bins = [0, 0.25, 0.5, 0.75, 1]
 labels = ['0-0.25', '0.25-0.5', '0.5-0.75', '0.75-1']
@@ -169,7 +163,6 @@ labels = ['0-0.25', '0.25-0.5', '0.5-0.75', '0.75-1']
 # Create a new column with accuracy groups
 results_df['accuracy_group'] = pd.cut(results_df['accuracy'], bins=bins, labels=labels, include_lowest=True)
 results_df['rand_score_group'] = pd.cut(results_df['rand_score'], bins=bins, labels=labels, include_lowest=True)
-results_df = results_df[results_df['n_clusters'] > 5] 
  
 # Compute overall metrics and correlations
 correlation_matrix_spearman, _ = compute_correlation(results_df, corr = "spearman")
@@ -220,7 +213,7 @@ for column_name in columns_to_compute:
     else:
         # Plot the heatmap
         plt.figure(figsize=(10, 8))
-        sns.heatmap(correlation_per_x, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
+        sns.heatmap(correlation_per_x, annot=True, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
         
     # Set title dynamically based on the column
     plt.title(f"Correlation of 'sigui' with Other Metrics for All {column_name.capitalize()}")
