@@ -28,7 +28,6 @@ for dataset in "$DATASET_DIR"/*.npy; do
                 -data_path "$dataset" \
                 -output_dir "$OUTPUT_DIR" \
                 -n_clusters "$k" \
-                -alpha $alpha \
                 --random_state 31416
         done
     done

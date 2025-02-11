@@ -130,9 +130,9 @@ def process_experiment(algorithm, dataset_name, data, labels, output_dir, **kwar
         "ch": ch,    # Calinski-Harabasz Score
         "db": db,    # Davies-Bouldin Score
         "bic": bic,  # BIC Score
-        "xb": xb,    # Xie-Beni Index
-        "partitions": partitions  # Include the partitions
+        "xb": xb   # Xie-Beni Index
     }
+    # "partitions": partitions   Include the partitions
     
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{dataset_name}_{algorithm}_{n_clusters}.txt")

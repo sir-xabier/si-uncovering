@@ -5,8 +5,6 @@ from typing import Generator, List, Tuple, Union
 from sklearn.metrics import silhouette_score as sc
 from sklearn.metrics import calinski_harabasz_score as chc
 from sklearn.metrics import davies_bouldin_score as dbc
-from scipy.stats import gmean
-
 
 def uncovering(x, c):
     """
@@ -27,8 +25,7 @@ def generate_decreasing_sequence(n, r = 0.75):
     S = (1 - r) / (1 - r**n)  # Factor de normalización
     sequence = [S * r**(i) for i in range(n)]
     
-    return sequence
-
+    return np.array(sequence)
 
 def sugeno_inspired_uncovering_index(X, c):
     """
@@ -37,7 +34,6 @@ def sugeno_inspired_uncovering_index(X, c):
     Parameters:
     - X: List or array of data points.
     - c: Cluster center (1D array-like).
-    - alpha: Weighting parameter for the convex combination.
 
     Returns:
     - Maximum uncovering value.
@@ -46,9 +42,9 @@ def sugeno_inspired_uncovering_index(X, c):
     n = len(uncovering_values)
     w = generate_decreasing_sequence(n-1)[::]
     result = []
-    sum_ = uncovering_values.sum() 
+    sum_ = np.sum(uncovering_values) 
     for i in range(n):
-        remaining_values = uncovering_values[:i] + uncovering_values[i+1:]
+        remaining_values = np.array(uncovering_values[:i] + uncovering_values[i+1:])
         result.append(np.minimum(uncovering_values[i], np.sum(w * remaining_values)))
     return np.max(result)
 
@@ -79,7 +75,7 @@ def sugeno_inspired_global_uncovering_index(X, labels, get_info=False):
             partial_siui.append(0.0)
         else:    
             # Compute partial SIUI for the current cluster
-            partial_value = sugeno_inspired_uncovering_index(X_c, c, alpha) 
+            partial_value = sugeno_inspired_uncovering_index(X_c, c) 
             partial_siui.append(partial_value * (X_c.shape[0] / n))
 
     if len(partial_siui) < unique_y.shape[0]:
