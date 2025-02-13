@@ -61,13 +61,13 @@ def compute_metrics(df):
     
     return summary, grouped
 
-def compute_correlation(df, corr = "pearson"):
+def compute_correlation(df, corr = "spearman"):
     # Select only numeric columns (exclude non-numeric columns like 'dataset', 'algorithm')
     numeric_df = df.select_dtypes(include=[float, int])
+    numeric_df["MCI"] = 1 - numeric_df["MCI"] # Since we are working with uncoverings  
     numeric_df.drop(columns = ["Predicted k", "N", "D", "r", "C", "Cluster Variance"], inplace = True)
     # Correlation between 'sigui' and other metrics (general)
     correlation_matrix = numeric_df.corr(method= corr)
-    
     # Correlation between 'sigui' and other metrics
     sigui_correlation = correlation_matrix['SIGUI'].drop('SIGUI')  # Drop 'sigui' to avoid self-correlation
     
@@ -78,7 +78,8 @@ def compute_correlation(df, corr = "pearson"):
 def compute_correlation_per_x(df, x="dataset"):
     correlation_per_x = {}
     # List of columns to drop (keeping only the relevant ones for correlation)
-    columns = ["Predicted k", "N", "D", "r", "C", "Cluster Variance", "Accuracy", "Precision", "Recal", "F1 Score"] 
+    columns = ["Predicted k", "N", "D", "r", "C", "Cluster Variance", "MCI", "XBTSI", "CHI", "BIC", "SC", "DBI", "SSE"] 
+     
     columns_to_drop = [col for col in columns if col != x]
     
     # Drop irrelevant columns
@@ -156,7 +157,8 @@ results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d
 
 # Remove the seed from the dataset name
 results_df['dataset'] = results_df['dataset'].str.replace(r'-S\d+', '', regex=True)
-results_df = results_df[results_df['n_clusters']>5]
+results_df = results_df[results_df['n_clusters']>5] #This scenarios are the ones in which SIGUI has better performance
+
 
 def format_label(text):
     """Format text for display: capitalize, replace underscores, remove abbreviations"""
@@ -172,7 +174,7 @@ def format_label(text):
         'adjusted_rand_score': 'Adjusted Rand Score',
         'precision': 'Precision',
         'recall': 'Recal',
-        'gci': 'GCI',
+        'gci': 'MCI',
         'sigui': 'SIGUI',
         'sse': 'SSE',
         'sc': 'SC',
@@ -198,18 +200,16 @@ results_df['Binned Adjusted Random Score'] = pd.cut(results_df['Adjusted Rand Sc
 
 # Compute overall metrics and correlations
 correlation_matrix_spearman, _ = compute_correlation(results_df, corr = "spearman")
-correlation_matrix_pearson, _ = compute_correlation(results_df, corr = "pearson")
-
 
 # Plot general correlation matrix
 plt.figure(figsize=(10, 8))
 sns.heatmap(correlation_matrix_spearman, annot=True, cmap="coolwarm", fmt=".2f", cbar=True, vmin=-1, vmax=1)
 plt.title("General Correlation Matrix")
 plt.tight_layout()
-plt.savefig("./figures/corr_matrix_spearman.png")
+plt.savefig("./figures/figure_heatmap_spearmancorr.png")
 
 # List of columns to iterate over for correlation
-columns_to_compute =  ["Cluster Variance", "C", "N", "D", "Binned Adjusted Random Score"]  # You can add more columns as needed
+columns_to_compute =  ["Cluster Variance", "N", "D", "r", "Binned Adjusted Random Score", "C"]  # Add You can add more columns as needed
 
 for column_name in columns_to_compute:
     # Compute the correlation per x (e.g., per dataset, per k, etc.)
@@ -245,6 +245,6 @@ for column_name in columns_to_compute:
     plt.tight_layout()
 
     # Save the heatmap figure
-    plt.savefig(f"./figures/corr_all_{column_name}.png")
+    plt.savefig(f"./figures/figure_heatmap_{column_name}.png")
     plt.close()  # Close the plot to free memory for the next one
  
