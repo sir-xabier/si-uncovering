@@ -196,8 +196,6 @@ results_df = results_df.rename(columns={col: format_label(col) for col in result
 bins = [-1., -0.5, 0.0, 0.5, 1.]
 labels = ['-1 -0.5','-0.5 0.0', '0.0 0.5', '0.5 1']
 
-results_df['Binned Adjusted Random Score'] = pd.cut(results_df['Adjusted Rand Score'], bins=bins, labels=labels, include_lowest=True)
-
 # Compute overall metrics and correlations
 correlation_matrix_spearman, _ = compute_correlation(results_df, corr = "spearman")
 
@@ -209,7 +207,7 @@ plt.tight_layout()
 plt.savefig("./figures/figure_heatmap_spearmancorr.png")
 
 # List of columns to iterate over for correlation
-columns_to_compute =  ["Cluster Variance", "N", "D", "r", "Binned Adjusted Random Score", "C"]  # Add You can add more columns as needed
+columns_to_compute =  ["Cluster Variance", "N", "D", "r", "C"]  # Add You can add more columns as needed
 
 for column_name in columns_to_compute:
     # Compute the correlation per x (e.g., per dataset, per k, etc.)
