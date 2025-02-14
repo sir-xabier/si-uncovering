@@ -33,24 +33,7 @@ def read_results(directory, output_csv=None):
                     
                     # Parse JSON content
                     data = json.loads(content)
-                    
-                    # Extract partitions info
-                    partitions = data.get("partitions", {})
-                    X = partitions.get("X", [])
-                    y = partitions.get("y", [])
-                    k = partitions.get("k", [])
-                    
-                    # Compute k (number of unique clusters), n (number of samples), d (dimensionality)
-                    n = len(y)
-                    d = len(X[0]) if X else 0
-                    k_true = len(set(y)) if y else 0
-                
-                    # Add these values to the result
-                    data["n_samples"] = n
-                    data["dimensionality"] = d
-                    data["n_clusters"] = k_true
-                    data["k"] = k
-                    data.pop('partitions')
+                    #data.pop('partitions')
                     all_results.append(data)
 
             except json.JSONDecodeError as e:
@@ -64,8 +47,8 @@ def read_results(directory, output_csv=None):
     # Save to CSV if output_csv is specified
     if output_csv:
         os.makedirs(os.path.dirname(output_csv), exist_ok=True)  # Ensure the output directory exists
-        df.to_csv(output_csv, index=False)
-        print(f"Results saved to {output_csv}")
+        #df.to_csv(output_csv, index=False)
+        #print(f"Results saved to {output_csv}")
 
     return df
 
@@ -78,23 +61,25 @@ def compute_metrics(df):
     
     return summary, grouped
 
-def compute_correlation(df, corr = "pearson"):
+def compute_correlation(df, corr = "spearman"):
     # Select only numeric columns (exclude non-numeric columns like 'dataset', 'algorithm')
     numeric_df = df.select_dtypes(include=[float, int])
-
+    numeric_df["MCI"] = 1 - numeric_df["MCI"] # Since we are working with uncoverings  
+    numeric_df.drop(columns = ["Predicted k", "N", "D", "r", "C", "Cluster Variance"], inplace = True)
     # Correlation between 'sigui' and other metrics (general)
     correlation_matrix = numeric_df.corr(method= corr)
-    
     # Correlation between 'sigui' and other metrics
-    sigui_correlation = correlation_matrix['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
+    sigui_correlation = correlation_matrix['SIGUI'].drop('SIGUI')  # Drop 'sigui' to avoid self-correlation
     
     return correlation_matrix, sigui_correlation
+
+
 # Function to compute correlations per x (e.g., per dataset, per k, etc.)
 def compute_correlation_per_x(df, x="dataset"):
     correlation_per_x = {}
-
     # List of columns to drop (keeping only the relevant ones for correlation)
-    columns = ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy_group", "algorithm", "rand_score_group"] 
+    columns = ["Predicted k", "N", "D", "r", "C", "Cluster Variance", "MCI", "XBTSI", "CHI", "BIC", "SC", "DBI", "SSE"] 
+     
     columns_to_drop = [col for col in columns if col != x]
     
     # Drop irrelevant columns
@@ -114,8 +99,8 @@ def compute_correlation_per_x(df, x="dataset"):
         spearman_corr = df_filtered_value.corr(method='spearman')
         
         # Extract correlation with 'sigui' (assuming 'sigui' exists in the DataFrame)
-        if 'sigui' in spearman_corr.columns:
-            sigui_correlation = spearman_corr['sigui'].drop('sigui')  # Drop 'sigui' to avoid self-correlation
+        if 'SIGUI' in spearman_corr.columns:
+            sigui_correlation = spearman_corr['SIGUI'].drop('SIGUI')  # Drop 'sigui' to avoid self-correlation
             correlation_per_x[x_] = sigui_correlation
     df = pd.DataFrame.from_dict(correlation_per_x)
     df = df.reindex(sorted(df.columns), axis=1).T
@@ -166,43 +151,63 @@ results_directory = "./results"
 # Read and process results
 results_df = read_results(results_directory, "out_files/merged.csv")
 
+
 # Extracting 'dt' values using regex
 results_df['dt'] = results_df['dataset'].apply(lambda x: float(re.search(r'dt(\d+\.\d+)', x).group(1)))
 
 # Remove the seed from the dataset name
 results_df['dataset'] = results_df['dataset'].str.replace(r'-S\d+', '', regex=True)
+results_df = results_df[results_df['n_clusters']>5] #This scenarios are the ones in which SIGUI has better performance
 
 
-# Assuming results_df already exists and has an 'accuracy' column
-bins = [0, 0.25, 0.5, 0.75, 1]
-labels = ['0-0.25', '0.25-0.5', '0.5-0.75', '0.75-1']
+def format_label(text):
+    """Format text for display: capitalize, replace underscores, remove abbreviations"""
+    replacements = {
+        '_': ' ',
+        'dataset': 'Dataset',
+        'algorithm': 'Algorithm',
+        'k': 'Predicted k',
+        'n_samples': 'N',
+        'dimensionality': "D",
+        'alpha':'r',
+        'n_clusters': 'C',
+        'adjusted_rand_score': 'Adjusted Rand Score',
+        'precision': 'Precision',
+        'recall': 'Recal',
+        'gci': 'MCI',
+        'sigui': 'SIGUI',
+        'sse': 'SSE',
+        'sc': 'SC',
+        'ch': 'CHI',
+        'db': 'DBI',
+        'bic': 'BIC',
+        'xb': 'XBTSI',
+        'f1_score': 'F1 Score',
+        'accuracy':'Accuracy', 
+        'rand_score':'Rand Score',
+        'dt': 'Cluster Variance'
+    }
+    text = text.lower()
+    text = replacements[text]
+    return text 
 
-# Create a new column with accuracy groups
-results_df['accuracy_group'] = pd.cut(results_df['accuracy'], bins=bins, labels=labels, include_lowest=True)
-results_df['rand_score_group'] = pd.cut(results_df['rand_score'], bins=bins, labels=labels, include_lowest=True)
-results_df = results_df[results_df['n_clusters'] > 5] 
- 
+results_df = results_df.rename(columns={col: format_label(col) for col in results_df.columns})
+
+bins = [-1., -0.5, 0.0, 0.5, 1.]
+labels = ['-1 -0.5','-0.5 0.0', '0.0 0.5', '0.5 1']
+
 # Compute overall metrics and correlations
 correlation_matrix_spearman, _ = compute_correlation(results_df, corr = "spearman")
-correlation_matrix_pearson, _ = compute_correlation(results_df, corr = "pearson")
 
 # Plot general correlation matrix
 plt.figure(figsize=(10, 8))
 sns.heatmap(correlation_matrix_spearman, annot=True, cmap="coolwarm", fmt=".2f", cbar=True, vmin=-1, vmax=1)
 plt.title("General Correlation Matrix")
 plt.tight_layout()
-plt.savefig("./figures/corr_matrix_spearman.png")
-
-# Plot general correlation matrix
-plt.figure(figsize=(10, 8))
-sns.heatmap(correlation_matrix_pearson, annot=True, cmap="coolwarm", fmt=".2f", cbar=True, vmin=-1, vmax=1)
-plt.title("General Correlation Matrix")
-plt.tight_layout()
-plt.savefig("./figures/corr_matrix_pearson.png")
-
+plt.savefig("./figures/figure_heatmap_spearmancorr.png")
 
 # List of columns to iterate over for correlation
-columns_to_compute =  ["dataset", "dt", "k", "n_clusters", "n_samples", "dimensionality", "accuracy_group", "rand_score_group"]  # You can add more columns as needed
+columns_to_compute =  ["Cluster Variance", "N", "D", "r", "C"]  # Add You can add more columns as needed
 
 for column_name in columns_to_compute:
     # Compute the correlation per x (e.g., per dataset, per k, etc.)
@@ -217,7 +222,7 @@ for column_name in columns_to_compute:
         # Plot the heatmap
         sns.heatmap(
             correlation_per_x, 
-            annot=False, 
+            annot=True, 
             cmap="coolwarm", 
             cbar=True, 
             vmin=-1, 
@@ -231,13 +236,13 @@ for column_name in columns_to_compute:
     else:
         # Plot the heatmap
         plt.figure(figsize=(10, 8))
-        sns.heatmap(correlation_per_x, annot=False, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
+        sns.heatmap(correlation_per_x, annot=True, cmap="coolwarm", cbar=True, vmin=-1, vmax=1)
         
     # Set title dynamically based on the column
-    plt.title(f"Correlation of 'sigui' with Other Metrics for All {column_name.capitalize()}")
+    plt.title(f"Correlation of SIGUI with Other ICVI grouped by {column_name}")
     plt.tight_layout()
 
     # Save the heatmap figure
-    plt.savefig(f"./figures/corr_all_{column_name}.png")
+    plt.savefig(f"./figures/figure_heatmap_{column_name}.png")
     plt.close()  # Close the plot to free memory for the next one
  
